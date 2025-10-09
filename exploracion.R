@@ -68,7 +68,7 @@ print(cor_matrix)
 
 
 #quiero ahcer una regresion lineal donde democracia_21 es la variable dependiente y percepcion_2 y percepcion_5 son predictores
-model <- lm(democracia_21 ~ percepcion_2 + percepcion_5+percepcion_3+percepcion_6+percepcion_38, data=df) #situacion presente de economia pais y personal, futura eeconomica y personal
+model <- lm(democracia_21 ~ percepcion_2 + percepcion_5+percepcion_3+percepcion_6+percepcion_38+gse, data=df) #situacion presente de economia pais y personal, futura eeconomica y personal
 summary(model)
 #situacion presente, futura economica del pais y economica presente predicen apoyo a democracia. aunqu modelo explica solo 3 un 3%
 
@@ -83,8 +83,9 @@ set.seed(324)
 df_lpa <- df[, c("percepcion_3", "percepcion_2", "percepcion_5" )]
 
 
-lpa_n1<-estimate_profiles(df_lpa, 4:6,
+lpa_n1<-estimate_profiles(df_lpa, 2:4,
                           return_posterior_prons=TRUE)
+lpa_n1
 #pareciera que mejor es el de 5 clases
 
 #lo calculare con error estandar y promedio robusto
@@ -96,11 +97,11 @@ mr$center #estimacion roubusta de vector promedio, mas apropiado que cov
 
 lpa_r<-scale(df_lpa, center=mr$center, scale=FALSE)
 
-lpa_n2<-estimate_profiles(lpa_r, 2:6,
+lpa_n2<-estimate_profiles(lpa_r, 2:4,
                           return_posterior_prons=T,
                           se.method="HC")
 lpa_n2
-#pareciera que mejor es el de 5 clases, pero no tanto mas que el de 4
+
 
 
 lpa_r4<-estimate_profiles(df_lpa, 4,
@@ -129,9 +130,12 @@ df$perfil<-profile_summary$Class
 
 str(df)
 df$perfil<-as.factor(df$perfil)
+df$sexo<-as.factor(df$sexo)
+df$gse<-as.factor(df$gse)
+
 
 #realizar anova usando democracia_21 como vd y perfil como predictor
-anova_model <- aov(democracia_21 ~ perfil, data = df)
+anova_model <- aov(democracia_21 ~ perfil+gse, data = df)
 summary(anova_model)
 
 #como un 2% de varianza en apoyo a la democracia se explica por este moldeo
@@ -140,6 +144,8 @@ summary(anova_model)
 #realizar post hoc tukey con correcion de bonferroni
 post_hoc <- TukeyHSD(anova_model, "perfil", conf.level = 0.95)
 print(post_hoc)
+
+
 
 #diferencias significativas 2 v1 y 4v2
 #diferencias entre Optimistas y centradas en si  --->mas defensores de democracia
@@ -150,6 +156,32 @@ print(post_hoc)
 
 #ES DECIR, UNA SITUACION ECONOMICA PERSONAL MAS MEJRO NO PREDICE MAYOR APOYO A DEMOCRACIA
 #ES LA SITUACION PAIS EN SU TOTALIDAD
- 
+#nO HAY DIFERENCIAS ENTRE MODERADOS Y PESIMISTAS POR EJEMPLO
 
+
+post_hoc_gse <- TukeyHSD(anova_model, "gse", conf.level = 0.95)
+
+print(post_hoc_gse)
+
+
+#1 es mas rico 5 es mas pobre
+#grupos 3 y 4 tienen significativamente menos apoyo a democracia que 1
+#grupos 3 y 4 tienen significativamente menos apoyo a democracia que 1
+#grupos 3 y 4 menos apoyo a democracia que 2
+#marginal diferencia etnre 1 y 2
+#faltas de diferencias de 5 puede ser por bajo numero de casos
+
+
+
+table(df$gse, df$perfil)#el tema es que hay muy pocas personas del eprfil mas pobre
+
+#quiero hacer un chisq.test de distribucion de "gse" segun perfil
+chisq_test <- chisq.test(table(df$gse, df$perfil))
+print(chisq_test)
+#hay diferencias significativas en distribucion de gse segun perfil
+
+
+library(usethis)
+use_git() 
+use_github()
 
