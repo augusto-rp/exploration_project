@@ -180,8 +180,11 @@ chisq_test <- chisq.test(table(df$gse, df$perfil))
 print(chisq_test)
 #hay diferencias significativas en distribucion de gse segun perfil
 
+#quiero abrir github y subir esta version
+
+
 
 library(usethis)
 use_git() 
-use_github()
+usethis::use_github()
 
