@@ -9,20 +9,24 @@ library(mclust)
 library(robustbase)
 library(tidyLPA)
 
-
-
+#tribunales, gobierno, congreso, municipalidades, fiscales
+#"confianza_6_d","confianza_6_i","confianza_6_k","confianza_6_o", "confianza_6_p"
 
 #primero abrir archivo que esta en subcarpeta bases_sinmodificacion llamado "base_92_20112024.csv y crear objeto llamado base
 base<-read.csv("bases_sinmodificacion/base_92_20112024.csv", header=T)
 
 
+
+
 #crear base de datos llamada "df" extrayendo columnas "id_bu", "gse", "percepcion_2", "percepcion_3", "bienestar_2", "percepcion_5", "percepcion_6", "percepcion_38, "democracia_21", "sexo", "edad" )
-df <- base[, c("id_bu", "gse", "percepcion_2", "percepcion_3", "bienestar_2", "percepcion_5", "percepcion_6", "percepcion_38", "democracia_21", "sexo", "edad")]
+df <- base[, c("id_bu", "gse", "percepcion_2", "percepcion_3", "percepcion_4", "bienestar_2", "percepcion_5", "percepcion_6", "percepcion_38", "democracia_21","sexo", "edad","confianza_6_d","confianza_6_i","confianza_6_k","confianza_6_o", "confianza_6_p")]
 #luego eliminar filas con NA en cualquier columna
 
 
 #si valor es -8 o -9 remplazar por NA
 df[df == -8 | df == -9 | df ==88 | df==99] <- NA
+
+
 
 #veamos si datos perdidos son aleatorios
 #misty::na.test(df) #es estadisticamente significativa por lo que patron de datos eprdidos no es aleatorio, pdoria haber hecho imputacion pero no se eprdio tanto
@@ -41,6 +45,10 @@ df$percepcion_3 <- ifelse(df$percepcion_3 == 1, 3,
                           ifelse(df$percepcion_3 == 2, 2,
                                  ifelse(df$percepcion_3 == 3, 1, df$percepcion_3)))
 
+#tambien invertir percepcion_4 que es eprcepcion de progresod e pais
+df$percepcion_4 <- ifelse(df$percepcion_4 == 1, 3,
+                          ifelse(df$percepcion_4 == 2, 2,
+                                 ifelse(df$percepcion_4 == 3, 1, df$percepcion_4)))
 
 #percepcion_38 que es situacion politica de chile esta invertida donde 1 es muy bueno
 #hay que invertir percepcion_38, 1=5, 2=4, 3=3, 4=2, 5=1, ignorar valores -8 y -9
@@ -61,31 +69,37 @@ df$percepcion_6 <- ifelse(df$percepcion_6 == 1, 5,
 
 #Listas las inversiones
 
+#borrar objeto base
+rm(base)
+
 #quiero generar matriz de correlaciones entre todas las percepcion, bienestar_2 y democracia_21. redondear resultado a 2 decimales}
 #omitir calculo si valor es -8 o -9
-cor_matrix <- round(cor(df[, c("percepcion_2", "percepcion_3", "bienestar_2", "percepcion_5", "percepcion_6", "percepcion_38", "democracia_21")], use="pairwise.complete.obs"), 2)
+cor_matrix <- round(cor(df[, c("percepcion_2", "percepcion_3", "percepcion_4", "percepcion_5", "percepcion_6", "percepcion_38", "democracia_21")], use="pairwise.complete.obs"), 2)
 print(cor_matrix)
 
+cor_confianza<- round(cor(df[, c("confianza_6_d","confianza_6_i","confianza_6_k","confianza_6_o", "confianza_6_p")], use="pairwise.complete.obs"), 2)
+print(cor_confianza)
+
+rm(cor_matrix, cor_confianza)
 
 #quiero ahcer una regresion lineal donde democracia_21 es la variable dependiente y percepcion_2 y percepcion_5 son predictores
-model <- lm(democracia_21 ~ percepcion_2 + percepcion_5+percepcion_3+percepcion_6+percepcion_38+gse, data=df) #situacion presente de economia pais y personal, futura eeconomica y personal
+model <- lm(democracia_21 ~ percepcion_2 + percepcion_5+percepcion_4+percepcion_3+gse, data=df) #situacion presente de economia pais y personal, futura eeconomica y personal
 summary(model)
-#situacion presente, futura economica del pais y economica presente predicen apoyo a democracia. aunqu modelo explica solo 3 un 3%
-
-#igual supuestos lineales no s ecumple
-
-
+#situacion economica presente y futura del gobierno predicen, pero no la personal
+#recordar que aca valroes ams bajos de democrcia_21 es mas apoyo a democracia. Entonces entre mas aumenta optimismo mas bajo valores en democracia_21, es decir mas apoyo a democracia
+#y gse mas alto es ams pobre, entonces entre mas pobre menos apoyo
 
 ##########CONSTRUCCION DE EPRFILES LATENTES CON LAS VARIABLES DE PERCEPCION
 set.seed(324)
 
 #crear nuevo data frame llamado df_lpa que contenga solo las columnas percepcion_3, percepcion_2, percepcion_5, percepcion_6, percepcion_38
-df_lpa <- df[, c("percepcion_3", "percepcion_2", "percepcion_5" )]
+df_lpa <- df[, c("percepcion_3", "percepcion_2", "percepcion_5")]
 
 
-lpa_n1<-estimate_profiles(df_lpa, 2:4,
+lpa_n1<-estimate_profiles(df_lpa, 2:5,
                           return_posterior_prons=TRUE)
 lpa_n1
+rm(df_lpa, lpa_n1)
 #pareciera que mejor es el de 5 clases
 
 #lo calculare con error estandar y promedio robusto
@@ -133,6 +147,7 @@ df$perfil<-as.factor(df$perfil)
 df$sexo<-as.factor(df$sexo)
 df$gse<-as.factor(df$gse)
 
+rm(df_lpa, lpa_n1, profile_summary)
 
 #realizar anova usando democracia_21 como vd y perfil como predictor
 anova_model <- aov(democracia_21 ~ perfil+gse, data = df)
@@ -182,9 +197,7 @@ print(chisq_test)
 
 #quiero abrir github y subir esta version
 
+#podria ahcer lo mismo pero con confianza en instituciones
 
 
-library(usethis)
-use_git() 
-usethis::use_github()
 
